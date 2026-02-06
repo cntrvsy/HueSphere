@@ -1,8 +1,10 @@
 <script lang="ts">
     import { appState } from "$lib/state/app.svelte";
 
-    let activeLightIndex = $derived(
-        appState.lights.findIndex((l) => l.id === appState.activeLightId),
+    let activeObjectIndex = $derived(
+        appState.sceneObjects.findIndex(
+            (o) => o.id === appState.activeObjectId,
+        ),
     );
 </script>
 
@@ -24,9 +26,9 @@
         <div class="navbar-center">
             <div class="flex items-center gap-2">
                 <button
-                    onclick={() => appState.prevLight()}
+                    onclick={() => appState.prevObject()}
                     class="btn btn-ghost btn-circle btn-sm"
-                    aria-label="Previous Light"
+                    aria-label="Previous Object"
                 >
                     <span class="material-symbols-outlined">chevron_left</span>
                 </button>
@@ -37,37 +39,19 @@
                     <span
                         class="text-xs font-bold uppercase tracking-wide opacity-70"
                     >
-                        Light {activeLightIndex + 1}
+                        Object {activeObjectIndex + 1}
+                    </span>
+                    <span class="text-[10px] opacity-50 uppercase">
+                        {appState.activeObject.type}
                     </span>
                 </div>
 
                 <button
-                    onclick={() => appState.nextLight()}
+                    onclick={() => appState.nextObject()}
                     class="btn btn-ghost btn-circle btn-sm"
-                    aria-label="Next Light"
+                    aria-label="Next Object"
                 >
                     <span class="material-symbols-outlined">chevron_right</span>
-                </button>
-
-                <div
-                    class="divider divider-horizontal mx-0 h-6 self-center"
-                ></div>
-
-                <button
-                    onclick={() => appState.addLight()}
-                    class="btn btn-ghost btn-circle btn-sm"
-                    aria-label="Add Light"
-                >
-                    <span class="material-symbols-outlined">add</span>
-                </button>
-
-                <button
-                    onclick={() => appState.removeLight()}
-                    disabled={appState.lights.length <= 1}
-                    class="btn btn-ghost btn-circle btn-sm text-error"
-                    aria-label="Remove Light"
-                >
-                    <span class="material-symbols-outlined">delete</span>
                 </button>
             </div>
         </div>

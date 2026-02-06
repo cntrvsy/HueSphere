@@ -3,7 +3,6 @@
   import Header from "$lib/components/Header.svelte";
   import LightingControls from "$lib/components/LightingControls.svelte";
   import MobileControls from "$lib/components/MobileControls.svelte";
-  import PalettePreview from "$lib/components/PalettePreview.svelte";
   import Navigation from "$lib/components/Navigation.svelte";
 
   // AppState is initialized in the module and imported by components,
@@ -18,6 +17,5 @@
   <Header />
   <LightingControls />
   <MobileControls />
-  <PalettePreview />
   <Navigation />
 </div>

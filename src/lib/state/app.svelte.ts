@@ -5,8 +5,72 @@ type AppModes = "3d_mode" | "color_picker_mode";
 type AppEvents = "toggleColorPicker";
 
 // --- Global Data State ---
-const lights = $state([{ id: crypto.randomUUID(), color: "#FFFFFF", intensity: 1.2, roughness: 0.2, metalness: 0.1 }]);
-let activeLightId = $state<string>(lights[0].id);
+// --- Global Data State ---
+interface SceneObject {
+    id: string;
+    type: "sphere" | "cube" | "cylinder" | "cone" | "torus";
+    position: [number, number, number];
+    rotation: [number, number, number];
+    scale: [number, number, number];
+    color: string;
+    roughness: number;
+    metalness: number;
+}
+
+const sceneObjects = $state<SceneObject[]>([
+    {
+        id: crypto.randomUUID(),
+        type: "cube",
+        position: [0, 0.5, 0],
+        rotation: [0, 0.2, 0],
+        scale: [1, 1, 1],
+        color: "#4caf50",
+        roughness: 0.2,
+        metalness: 0.1
+    },
+    {
+        id: crypto.randomUUID(),
+        type: "sphere",
+        position: [-0.3, 1.4, -0.2],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        color: "#ffeb3b",
+        roughness: 0.1,
+        metalness: 0.1
+    },
+    {
+        id: crypto.randomUUID(),
+        type: "cone",
+        position: [-0.9, 0.5, 0.2],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        color: "#e91e63",
+        roughness: 0.3,
+        metalness: 0.2
+    },
+    {
+        id: crypto.randomUUID(),
+        type: "cylinder",
+        position: [0.9, 0.6, 0.1],
+        rotation: [0, 0, Math.PI / 6],
+        scale: [0.6, 1.2, 0.6],
+        color: "#9c27b0",
+        roughness: 0.4,
+        metalness: 0.6
+    },
+    {
+        id: crypto.randomUUID(),
+        type: "torus",
+        position: [0.4, 0.3, 1.0],
+        rotation: [Math.PI / 2, -Math.PI / 6, 0], // Leaning back slightly
+        scale: [1, 1, 1],
+        color: "#ff9800",
+        roughness: 0.2,
+        metalness: 0.0
+    }
+]);
+
+let activeObjectId = $state<string>(sceneObjects[0].id);
 
 // Palette State
 let paletteName = $state("New Palette");
@@ -19,6 +83,8 @@ let greetMsg = $state("");
 // Global Lighting State
 let mainLightColor = $state("#FFFFFF");
 let mainLightIntensity = $state(0.8);
+let hdriUrl = $state("https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_dusk_2_1k.hdr");
+let toneMappingExposure = $state(1.0);
 
 // --- Finite State Machine ---
 const machine = new FiniteStateMachine<AppModes, AppEvents>("3d_mode", {
@@ -31,8 +97,9 @@ const machine = new FiniteStateMachine<AppModes, AppEvents>("3d_mode", {
 });
 
 // --- Actions & Computed ---
-function getActiveLight() {
-    return lights.find((l) => l.id === activeLightId) || lights[0];
+// --- Actions & Computed ---
+function getActiveObject() {
+    return sceneObjects.find((o) => o.id === activeObjectId) || sceneObjects[0];
 }
 
 async function refreshPalettes() {
@@ -58,84 +125,47 @@ export const appState = {
         machine.send("toggleColorPicker");
     },
 
-    // Light Management
-    get lights() { return lights; },
-    get activeLightId() { return activeLightId; },
-    setActiveLightId(id: string) { activeLightId = id; },
+    // Scene Object Management
+    get sceneObjects() { return sceneObjects; },
+    get activeObjectId() { return activeObjectId; },
+    setActiveObjectId(id: string) { activeObjectId = id; },
 
-    // Explicit setter if needed by components binding to it directly (though usually handled by internal logic)
-    // For read-only derived in components, getters are fine. For bindings, we need to be careful.
-    // Svelte 5 state is mutable, but exporting properties directly from an object is safer.
+    get activeObject() { return getActiveObject(); },
 
-    get activeLight() { return getActiveLight(); },
-
-    get activeLightColor() {
-        return getActiveLight().color;
+    get activeObjectColor() {
+        return getActiveObject().color;
     },
-    set activeLightColor(value: string) {
-        const light = getActiveLight();
-        if (light) light.color = value;
+    set activeObjectColor(value: string) {
+        const obj = getActiveObject();
+        if (obj) obj.color = value;
     },
 
-    get lightIntensity() {
-        return getActiveLight().intensity;
+    get activeObjectRoughness() {
+        return getActiveObject().roughness ?? 0.2;
     },
-    set lightIntensity(value: number) {
-        const light = getActiveLight();
-        if (light) light.intensity = value;
-    },
-
-    get lightRoughness() {
-        return getActiveLight().roughness ?? 0.2;
-    },
-    set lightRoughness(value: number) {
-        const light = getActiveLight();
-        if (light) light.roughness = value;
+    set activeObjectRoughness(value: number) {
+        const obj = getActiveObject();
+        if (obj) obj.roughness = value;
     },
 
-    get lightMetalness() {
-        return getActiveLight().metalness ?? 0.1;
+    get activeObjectMetalness() {
+        return getActiveObject().metalness ?? 0.1;
     },
-    set lightMetalness(value: number) {
-        const light = getActiveLight();
-        if (light) light.metalness = value;
-    },
-
-    addLight() {
-        const newLight = { id: crypto.randomUUID(), color: "#FFFFFF", intensity: 1.0, roughness: 0.2, metalness: 0.1 };
-        lights.push(newLight);
-        activeLightId = newLight.id;
+    set activeObjectMetalness(value: number) {
+        const obj = getActiveObject();
+        if (obj) obj.metalness = value;
     },
 
-    removeLight() {
-        if (lights.length <= 1) return;
-
-        const index = lights.findIndex(l => l.id === activeLightId);
-        // Note: In Svelte 5 with arrays, we should use array mutation methods or reassignment.
-        // Array mutation on $state array works.
-        const lightToRemove = lights[index];
-        const newLights = lights.filter(l => l.id !== activeLightId);
-
-        // Update lights array. Since `lights` is a const reference to a $state array proxy, 
-        // we can mistakenly try to reassign the variable itself if it was `let`.
-        // Ideally we splice.
-        lights.splice(index, 1);
-
-        // Select previous or first light
-        const newIndex = Math.max(0, index - 1);
-        activeLightId = lights[newIndex].id;
+    nextObject() {
+        const index = sceneObjects.findIndex(o => o.id === activeObjectId);
+        const nextIndex = (index + 1) % sceneObjects.length;
+        activeObjectId = sceneObjects[nextIndex].id;
     },
 
-    nextLight() {
-        const index = lights.findIndex(l => l.id === activeLightId);
-        const nextIndex = (index + 1) % lights.length;
-        activeLightId = lights[nextIndex].id;
-    },
-
-    prevLight() {
-        const index = lights.findIndex(l => l.id === activeLightId);
-        const prevIndex = (index - 1 + lights.length) % lights.length;
-        activeLightId = lights[prevIndex].id;
+    prevObject() {
+        const index = sceneObjects.findIndex(o => o.id === activeObjectId);
+        const prevIndex = (index - 1 + sceneObjects.length) % sceneObjects.length;
+        activeObjectId = sceneObjects[prevIndex].id;
     },
 
     // Backend Interaction
@@ -151,6 +181,12 @@ export const appState = {
 
     get mainLightIntensity() { return mainLightIntensity; },
     set mainLightIntensity(v) { mainLightIntensity = v; },
+
+    get hdriUrl() { return hdriUrl; },
+    set hdriUrl(v) { hdriUrl = v; },
+
+    get toneMappingExposure() { return toneMappingExposure; },
+    set toneMappingExposure(v) { toneMappingExposure = v; },
 
     async greet() {
         greetMsg = await invoke("greet", { name: name });

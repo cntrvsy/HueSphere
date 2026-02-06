@@ -13,12 +13,12 @@
             >
             <span
                 class="w-2 h-2 rounded-full ring-2 ring-offset-1 ring-transparent"
-                style:background-color={appState.activeLightColor}
+                style:background-color={appState.mainLightColor}
             ></span>
         </div>
         <div class="flex flex-col gap-3">
             <input
-                bind:value={appState.lightIntensity}
+                bind:value={appState.mainLightIntensity}
                 min="0"
                 max="5"
                 step="0.1"
