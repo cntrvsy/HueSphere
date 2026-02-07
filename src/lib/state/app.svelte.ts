@@ -17,6 +17,18 @@ interface SceneObject {
     metalness: number;
 }
 
+export interface LightObject {
+    id: string;
+    position: [number, number, number]; // Calculated from distance/angle/height
+    distance: number;
+    angle: number; // radians
+    height: number;
+    intensity: number;
+    color: string;
+    penumbra: number;
+    decay: number;
+}
+
 const sceneObjects = $state<SceneObject[]>([
     {
         id: crypto.randomUUID(),
@@ -85,6 +97,22 @@ let mainLightColor = $state("#FFFFFF");
 let mainLightIntensity = $state(0.8);
 let hdriUrl = $state("https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_dusk_2_1k.hdr");
 let toneMappingExposure = $state(1.0);
+
+// Studio Lighting State
+let isStudioMode = $state(true);
+let studioLights = $state<LightObject[]>([
+    {
+        id: crypto.randomUUID(),
+        position: [5, 5, 5],
+        distance: 8,
+        angle: Math.PI / 4,
+        height: 5,
+        intensity: 2,
+        color: "#FFFFFF",
+        penumbra: 0.5,
+        decay: 0
+    }
+]);
 
 // --- Finite State Machine ---
 const machine = new FiniteStateMachine<AppModes, AppEvents>("3d_mode", {
@@ -187,6 +215,50 @@ export const appState = {
 
     get toneMappingExposure() { return toneMappingExposure; },
     set toneMappingExposure(v) { toneMappingExposure = v; },
+
+    // Studio Lighting Logic
+    get isStudioMode() { return isStudioMode; },
+    set isStudioMode(v) { isStudioMode = v; },
+
+    get studioLights() { return studioLights; },
+
+    addStudioLight() {
+        studioLights.push({
+            id: crypto.randomUUID(),
+            position: [5, 5, 5],
+            distance: 5,
+            angle: 0,
+            height: 5,
+            intensity: 1,
+            color: "#FFFFFF",
+            penumbra: 0.5,
+            decay: 0
+        });
+    },
+
+    removeStudioLight(id: string) {
+        // Prevent removing the last light to avoid pitch black scene
+        if (studioLights.length <= 1) return;
+        studioLights = studioLights.filter(l => l.id !== id);
+    },
+
+    updateStudioLight(id: string, updates: Partial<LightObject>) {
+        const light = studioLights.find(l => l.id === id);
+        if (light) {
+            Object.assign(light, updates);
+            // Recalculate position if needed
+            if (updates.distance !== undefined || updates.angle !== undefined || updates.height !== undefined) {
+                const angle = updates.angle ?? light.angle;
+                const distance = updates.distance ?? light.distance;
+                const height = updates.height ?? light.height;
+                light.position = [
+                    distance * Math.sin(angle),
+                    height,
+                    distance * Math.cos(angle)
+                ];
+            }
+        }
+    },
 
     async greet() {
         greetMsg = await invoke("greet", { name: name });
